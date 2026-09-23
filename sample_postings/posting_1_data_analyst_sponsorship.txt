@@ -1,0 +1,26 @@
+Data Analyst — Northgate Retail Group
+Location: London, UK (Hybrid — 3 days in office)
+Employment type: Full-time
+Salary: £30,000 - £36,000 depending on experience
+
+About the role:
+We're looking for a Junior-to-Mid Data Analyst to join our commercial analytics
+team. You'll build dashboards, support pricing decisions, and work closely with
+the merchandising team to turn sales data into recommendations.
+
+Requirements (essential):
+- 1-2 years' experience in a data or business analyst role
+- Strong SQL skills
+- Experience building dashboards in Power BI or Tableau
+- Comfortable presenting findings to non-technical stakeholders
+
+Nice to have:
+- Exposure to Python or R for data cleaning
+- Experience with e-commerce or retail data
+- Familiarity with A/B testing
+
+We welcome applications from candidates who require visa sponsorship — Northgate
+is a licensed UK Skilled Worker visa sponsor and has sponsored several analyst
+hires in the past year.
+
+Benefits: 25 days holiday, pension matching, hybrid working, annual training budget.
