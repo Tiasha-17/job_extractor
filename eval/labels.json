@@ -1,0 +1,20 @@
+{
+  "posting_1_data_analyst_sponsorship.txt": {
+    "seniority_level": "Entry-level/Junior",
+    "employment_type": "Full-time",
+    "remote_policy": "Hybrid",
+    "sponsorship_signal": "Sponsorship offered"
+  },
+  "posting_2_bi_analyst_no_sponsorship.txt": {
+    "seniority_level": "Senior",
+    "employment_type": "Full-time",
+    "remote_policy": "Onsite",
+    "sponsorship_signal": "No sponsorship / must have right to work"
+  },
+  "posting_3_ai_engineer_ambiguous.txt": {
+    "seniority_level": "Entry-level/Junior",
+    "employment_type": "Full-time",
+    "remote_policy": "Remote",
+    "sponsorship_signal": "Not mentioned"
+  }
+}
