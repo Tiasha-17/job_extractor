@@ -1,0 +1,23 @@
+AI Engineer (Entry Level) — Solvent Labs
+Location: Remote (UK-based candidates)
+Employment type: Full-time
+
+Solvent Labs is a small AI startup building tools for the insurance industry.
+We're hiring our first junior AI engineer to help build and evaluate LLM-based
+pipelines under the guidance of our founding engineer.
+
+What you'll do:
+- Build and test prompts and tool-calling pipelines using the Anthropic and
+  OpenAI APIs
+- Write Python to wrap model calls into small internal tools
+- Help design evaluation sets to measure model output quality
+
+What we're looking for:
+- Some hands-on experience with LLM APIs (personal projects count)
+- Strong Python fundamentals
+- A portfolio of projects you can talk through in depth
+- Comfortable working independently in a remote, async-first team
+
+Compensation: competitive, dependent on experience. Equity available.
+
+This is a fully remote role and we're open to candidates anywhere in the UK.
