@@ -1,0 +1,16 @@
+.venv
+.env
+postings.db
+__pycache__/
+*.pyc
+.DS_Store
+# Local real-world postings, human labels and model reports
+eval/real/
+
+# Local agent configuration and sensitive/runtime files
+.agents/
+.claude/
+.env.*
+*.db
+*.db-*
+.streamlit/secrets.toml
