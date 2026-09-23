@@ -1,0 +1,20 @@
+BI Analyst — Fenwick & Cole Financial Services
+Location: Edinburgh, UK (Onsite)
+Employment type: Full-time
+Salary: £42,000 - £50,000
+
+We are seeking an experienced BI Analyst to own our reporting layer across
+finance and operations. You will design SQL data models, maintain our Power BI
+semantic layer, and partner with senior stakeholders on KPI definitions.
+
+Requirements:
+- 4+ years' experience in a BI or analytics engineering role
+- Advanced SQL and dimensional modelling experience
+- Deep Power BI (DAX, semantic modelling) experience
+- Experience with Azure Data Factory or similar ETL tooling
+- Excellent stakeholder management skills
+
+Applicants must already have the right to work in the UK. We are unable to
+offer visa sponsorship for this role.
+
+Benefits: private healthcare, 10% pension contribution, discretionary bonus.
