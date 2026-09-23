@@ -1,195 +1,101 @@
 # Job-Description Structured Extractor
 
-A small local portfolio app that extracts job details and explicit UK visa
-sponsorship signals from pasted postings using Ollama `qwen2.5:7b-instruct`.
-Streamlit displays the result and SQLite stores it for review. No API key is needed.
+A local AI application that turns job adverts into structured records, with a focus on explicit UK visa-sponsorship information. Built with **Python, Ollama, Streamlit and SQLite**.
 
-## Setup and run
+## The problem
 
-Use Python 3.12 (the version verified for this project). Install Ollama from
-[ollama.com](https://ollama.com), open the Ollama application, and download the model:
+Job adverts describe similar information in different ways. Skills, experience, working arrangements and sponsorship conditions may be scattered across long descriptions. Reviewing several roles means repeatedly finding the same details and keeping track of what each employer actually says.
+
+This project brings those details into a consistent format. Its sponsorship fields distinguish between an explicit offer, a refusal or existing-right-to-work requirement, and no mention at all. A supporting quotation lets the user check the extraction against the original wording.
+
+## What the application does
+
+A user pastes a job description into the Streamlit interface. The application extracts its details, displays the structured result and saves the original text alongside the extraction in a local SQLite database. Previously saved results can be browsed in the same interface. An optional source note helps identify where a posting came from.
+
+| Information | Extracted details |
+| --- | --- |
+| Role | Company, job title, seniority and years of experience |
+| Skills | Required skills, optional preferred skills and technical tools |
+| Working conditions | Employment type, location, remote policy and salary when available |
+| Sponsorship | Explicit sponsorship signal, supporting quotation and visa-related phrases |
+
+The application processes text supplied by the user. It does not scrape job boards, submit applications or determine immigration eligibility. A missing sponsorship statement means **“Not mentioned”**, not that sponsorship is unavailable.
+
+## How it works
+
+```mermaid
+flowchart TD
+    A[Streamlit interface or CLI] --> B[Shared Python extractor]
+    B --> C[Local Ollama model: qwen2.5:7b-instruct]
+    C --> D[JSON parsing and schema validation]
+    D --> E[Display result and save to SQLite]
+    F[Evaluation scripts] --> B
+    D --> G[Compare predictions with reference labels]
+```
+
+The extractor sends the posting to Qwen through Ollama with a JSON schema and a temperature of zero. The schema defines the fields, types and allowed categories; Python independently validates the returned JSON before passing it to the application. Valid structure does not guarantee a factually correct answer.
+
+The UI, CLI and evaluation scripts share the same extraction function. This keeps model behaviour consistent across the application and its tests. Evaluation runs compare predictions with reference labels without adding records to the job-history database.
+
+## Design decisions
+
+- **Local inference:** job text is processed through the local Ollama service without a hosted model API key. Ollama must be running on the machine hosting the app.
+- **Simple persistence:** SQLite stores the original text, extracted JSON and basic metadata in one file, suitable for a personal tool.
+- **Duplicate-aware saving:** repeated text, after trimming outer whitespace, reuses the earliest saved record. A transaction protects the check and insert from competing saves through the application.
+- **Recoverable failures:** the interface explains connection, missing-model, timeout and invalid-output errors. A successful extraction remains visible if saving fails.
+- **Evidence-based changes:** prompt revisions follow observed extraction errors, with the original evaluation retained for comparison.
+
+## Evaluation and findings
+
+Recorded results from 23 September 2026:
+
+| Evaluation | Result | What it measures |
+| --- | --- | --- |
+| Offline regression tests | 7/7 passed | Storage behaviour, validation, error handling and Streamlit interactions |
+| Three synthetic postings | 12/12 field matches | Four categorical fields per posting |
+| Five real postings, original prompt | 12/20 matches (60%) | Agreement with AI-assisted reference labels |
+| Same five postings, revised prompt | 14/20 matches (70%) | Agreement after a targeted prompt clarification |
+
+Real-posting testing exposed a repeated error: the model assumed **Full-time** when employment type was absent. It also inferred an onsite requirement from a city location. The prompt was clarified to use **Not specified** instead of making these assumptions. This corrected two predictions in one posting, while three unsupported Full-time predictions remained.
+
+The real-posting labels were AI-assisted, not independently human-labelled. These same examples informed the prompt change, so the improvement is a tuning result—not an independent accuracy estimate. Scores cover seniority, employment type, remote policy and sponsorship signal; they do not measure every extracted field.
+
+All five real texts omitted sponsorship wording. Further testing needs unseen adverts with explicit sponsorship offers and refusals. [Evaluation notes](docs/evaluation.md) explain the remaining ambiguities and reproducibility limits. Raw real adverts and local reports are excluded from this repository.
+
+## Limitations and next steps
+
+The model can produce structurally valid but unsupported claims. Seniority can be subjective, adverts can contradict themselves, and the current employment-type field cannot fully represent a role offering both full-time and part-time options. Extracted details should be checked against the original advert.
+
+The next priority is evaluation on new, independently labelled postings before further tuning. The current app is intended for local, small-scale use: history is loaded in full, duplicate checks scan saved text, and running the Streamlit interface on another server also requires access to an Ollama service. Dependencies are currently unpinned.
+
+## Run locally
+
+Requires Python 3.12 and [Ollama](https://ollama.com) installed and running. From the project directory:
 
 ```bash
 ollama pull qwen2.5:7b-instruct
-ollama list
-```
-
-Keep Ollama running. If you do not use its desktop application, run `ollama serve`
-in a separate terminal. Do not start a second server if one already runs.
-
-From the project directory:
-
-```bash
 python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
-python extractor.py
 python -m streamlit run app.py
 ```
 
-Open the local URL printed by Streamlit. Paste a posting and click Extract.
-Successful extractions are saved automatically. To extract a file instead:
-
-```bash
-python cli.py sample_postings/posting_1_data_analyst_sponsorship.txt
-```
-
-If the app cannot connect, open Ollama or run `ollama serve`. If the model is missing,
-run the pull command above. Requests have a 120-second network timeout; slow hardware
-or model loading can require retrying. The app keeps the latest successful result
-visible even if a database save fails.
-
-## Architecture
-
-```text
-Streamlit app / CLI / evaluation scripts
-                  |
-          extract_posting(text)
-                  |
-       Ollama + qwen2.5:7b-instruct
-       JSON schema, temperature=0
-                  |
-       JSON parse + schema validation
-                  |
-        Python dictionary
-          /             \
- SQLite (app/CLI)     comparison report (evaluation)
-```
-
-| File | Responsibility |
-| --- | --- |
-| `schema.py` | Existing extraction fields, types, enums and required keys. |
-| `extractor.py` | Shared prompt/model call, timeout, output validation, actionable errors. |
-| `storage.py` | SQLite initialization, duplicate-aware saves, history reads. |
-| `app.py` | Paste/extract interface, persistent last result, saved history and error messages. |
-| `cli.py` | Extract one text file and save it. |
-| `eval/evaluate.py` | Original three-posting synthetic evaluation. |
-| `eval/real_world.py` | Prepare human labels and compare real postings without saving to SQLite. |
-| `tests/test_workflows.py` | Offline regression tests, including Streamlit interaction tests. |
-
-The schema is unchanged. The prompt now explicitly discourages inferring unstated
-employment types and working arrangements. Schema validation checks structure;
-it does not establish that a model's claims are factually correct. SQLite lives beside `storage.py`, independent of the terminal's working directory.
-
-## Current test results (23 September 2026)
-
-- Previously reported by the project owner: extractor smoke test and all three
-  sample postings worked; synthetic evaluation was **12/12 = 100%**.
-- This maintenance run: **7/7 offline regression tests passed**.
-- Follow-up live verification: Ollama was reachable, the extractor smoke test passed,
-  and the synthetic evaluation passed **12/12 = 100%** across all three samples.
-  The seven offline regression tests also passed again.
-- Baseline, five real user-supplied postings: **12/20 (60%) exact agreement with AI-assisted
-  reference labels**, with zero extraction failures. This is not an independent
-  human-labelled accuracy result. All five texts omit sponsorship wording.
-  See [evaluation notes](docs/evaluation.md) for interpretation. Raw real adverts
-  and local reports are excluded from this repository.
-
-- After a targeted prompt clarification: **14/20 (70%)** on the same five postings,
-  with zero extraction failures. Employment-type agreement improved from 1/5 to 2/5;
-  working-arrangement agreement improved from 3/5 to 4/5. Three unsupported Full-time
-  predictions remain. Seven regression tests and the 12/12 synthetic evaluation
-  passed again. This is a same-set tuning comparison, not independent test accuracy.
-  See [evaluation notes](docs/evaluation.md) for details and reproducibility limits.
-
-Run the checks:
+See the [setup and evaluation guide](docs/usage.md) for CLI usage, troubleshooting and labelling real postings.
 
 ```bash
 python -m unittest discover -s tests -v
-python extractor.py
-python eval/evaluate.py
+python eval/evaluate.py  # Requires Ollama and the model
 ```
 
-The synthetic score covers only seniority, employment type, remote policy and
-sponsorship signal: four fields across three invented examples. It does not measure
-all extracted fields and is not evidence of 100% real-world accuracy.
+## Repository structure
 
-## Manually evaluate 5–10 real postings
-
-1. Create `eval/real/` and save 5–10 complete real postings there as UTF-8 `.txt`
-   files, one posting per file. Include varied roles, remote policies, and explicit,
-   negative and absent sponsorship wording. Keep source URLs and collection dates
-   in a separate notes file. Avoid duplicate postings in this evaluation set.
-2. Create the label template:
-
-   ```bash
-   python eval/real_world.py prepare eval/real
-   ```
-
-3. Open `eval/real/labels.json`. Read the original postings **before looking at
-   model output**. Replace every `null` with your own label. The four categorical
-   fields use these exact values:
-
-   | Field | Allowed values |
-   | --- | --- |
-   | seniority_level | Internship; Entry-level/Junior; Mid-level; Senior; Lead/Staff; Manager/Director; Unknown |
-   | employment_type | Full-time; Part-time; Contract; Internship; Not specified |
-   | remote_policy | Remote; Hybrid; Onsite; Not specified |
-   | sponsorship_signal | Sponsorship offered; No sponsorship / must have right to work; Not mentioned |
-
-   Copy the sponsorship sentence verbatim into `sponsorship_evidence_quote`.
-   For `Not mentioned`, use `""`. Do not infer sponsorship from the employer's
-   reputation. Record ambiguous decisions in your notes and apply a consistent
-   interpretation. Seniority can require judgement under the existing schema.
-
-4. Run with Ollama available:
-
-   ```bash
-   python eval/real_world.py run eval/real
-   ```
-
-   The script validates all labels first, prints field matches, and writes a new
-   timestamped `report-*.json` beside the labels. It never writes to SQLite or
-   overwrites labels or reports. Each report contains human labels, predictions,
-   mismatches, per-field correct counts and extraction errors. The denominator is
-   all four labels for all postings, including failed extractions. Exit code 0 means
-   all four fields matched; 1 means mismatches or extraction failures; 2 means setup
-   errors. Evidence diagnostics are separate from the four-field score.
-
-5. Review `evidence_exact_match` and `evidence_grounded` in each result. An alternative
-   valid sentence may fail exact match; a verbatim quote can still be irrelevant.
-   Human review remains necessary. Manually inspect skills, salaries and other
-   fields too: the numeric score does not cover them.
-
-The prepare command refuses to overwrite existing labels. To add a posting later,
-add its filename and five labels manually, or use a new evaluation folder. Use a
-new held-out set after tuning; do not present performance on tuned examples as an
-independent test. Five to ten examples are an exploratory check, not a benchmark.
-
-## Duplicate handling
-
-Inspection found five saved rows and one exact duplicate group. Existing rows are
-preserved. New saves compare the full text after trimming leading/trailing whitespace
-and return the earliest matching ID. The first extraction and source note are retained.
-Different internal whitespace, changed wording and different postings remain distinct.
-
-`BEGIN IMMEDIATE` makes the check and insert a single serialized write transaction,
-so two app/CLI saves cannot race through this code. This small-project solution scans
-stored text and requires no database migration. Direct SQL inserts can bypass it.
-For a larger dataset, use a normalized-text hash with a unique index and an explicit,
-reviewed migration strategy for legacy duplicates. No legacy records were deleted.
-
-## Limitations and interview explanation
-
-- Local inference depends on Ollama being running and enough memory being available.
-  This is a local demo; hosting Streamlit alone does not provide the local model.
-- Structured output reduces format errors; it does not prevent incorrect extraction.
-  Temperature zero helps consistency but does not guarantee identical results.
-- Runtime validation protects storage and the UI from malformed output without
-  changing what the model is asked to extract.
-- Separate human labels and saved predictions make errors inspectable and avoid
-  treating the model's own output as ground truth.
-- SQLite and full-history reads suit a small personal tool; large-scale use would
-  need pagination, indexing and stronger duplicate constraints.
-- Raw postings are stored locally in plaintext. Review permissions and source terms
-  before publishing any collected text. The database and real evaluation folder
-  are ignored by Git by default.
-- Dependencies are not pinned; record installed versions when comparing runs.
-  CLI and original synthetic evaluation still surface exceptions in the terminal;
-  the Streamlit interface provides user-facing recovery messages.
-
-The real-posting baseline identified unsupported Full-time predictions in four
-postings. A targeted prompt clarification improved same-set agreement from 60% to
-70%, but three such guesses remain. The schema is unchanged. Original and revised
-prompts and reports are retained locally; independent real-posting validation is
-still needed.
+| File or folder | Purpose |
+| --- | --- |
+| `app.py` / `cli.py` | User interfaces |
+| `extractor.py` | Shared prompt, model call, validation and extraction errors |
+| `schema.py` | Structured output definition |
+| `storage.py` | SQLite storage and duplicate handling |
+| `sample_postings/` | Three synthetic examples |
+| `eval/` | Synthetic and real-posting evaluation tools |
+| `tests/` | Offline regression tests |
+| `docs/` | Detailed usage instructions and evaluation notes |
